@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Web串口调试工具" />
+    <meta name="theme-color" content="#fafafa" />
+    <link rel="apple-touch-icon" href="logo192.png" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="stylesheet" href="bootstrap.min.css">
+    <title>Webserial调试工具</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0; /* 移除body的padding */
+            font-family: Arial, sans-serif;
+            width: 100%;
+            height: 100vh;
+            box-sizing: border-box;
+            overflow: hidden; /* 防止出现滚动条 */
+        }
+
+        .main-wrapper {
+            display: flex;
+            height: 100vh;
+            width: 100%;
+        }
+
+        #serial-options {
+            width: 400px; /* 固定左侧宽度 */
+            padding: 20px;
+            background-color: #f5f5f5;
+            height: 100%;
+            box-sizing: border-box;
+            overflow-y: auto;
+            flex-shrink: 0; /* 防止侧边栏被压缩 */
+        }
+
+        .container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+            min-width: 0; /* 允许容器缩小到比内容更小 */
+        }
+
+        .input-group {
+            display: flex;
+            margin-bottom: 10px;
+            width: 100%;
+            gap: 10px; /* 添加间距 */
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        .input-group button {
+            padding: 10px;
+            font-size: 16px;
+            box-sizing: border-box;
+            white-space: nowrap; /* 防止按钮文字换行 */
+        }
+
+        .textarea-group {
+            display: flex;
+            margin-bottom: 10px;
+            width: 100%;
+            gap: 10px;
+        }
+
+        .textarea-group textarea {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+            height: 100px;
+            box-sizing: border-box;
+            min-width: 0; /* 允许textarea缩小 */
+        }
+
+        .textarea-group button {
+            padding: 10px;
+            font-size: 16px;
+            box-sizing: border-box;
+            white-space: nowrap;
+        }
+
+        #loginfo {
+            width: 100%;
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+            margin-top: 10px;
+            box-sizing: border-box;
+            resize: none; /* 防止手动调整大小 */
+        }
+
+        .misc {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            margin: 10px;
+            z-index: 100;
+        }
+
+        /* Form controls in serial options */
+        .form-control, .form-select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .input-group-text {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        /* Responsive design */
+        /* @media (max-width: 768px) {
+            .main-wrapper {
+                flex-direction: column;
+            }
+
+            #serial-options {
+                width: 100%;
+                height: auto;
+                max-height: 50vh;
+            }
+
+            .container {
+                height: 50vh;
+            }
+        } */
+    </style>
+</head>
+
+<body>
+    <div class="main-wrapper">
+        <div id="serial-options">
+            <div>
+                <div>
+                    <span class="input-group-text">波特率</span>
+                    <input type="number" id="serial-baud" class="form-control" placeholder="选择波特率" value="2400"
+                        list="baud-list">
+                        <datalist id="baud-list">
+                            <option>110</option>
+                            <option>300</option>
+                            <option>600</option>
+                            <option>1200</option>
+                            <option>2400</option>
+                            <option>4800</option>
+                            <option>7200</option>
+                            <option>9600</option>
+                            <option>14400</option>
+                            <option>19200</option>
+                            <option>28800</option>
+                            <option>38400</option>
+                            <option>56000</option>
+                            <option>57600</option>
+                            <option>76800</option>
+                            <option>115200</option>
+                            <option>230400</option>
+                            <option>460800</option>
+                        </datalist>
+                </div>
+
+                <div class="input-group mb-3">
+                    <span class="input-group-text">数据位</span>
+                    <select class="form-select" id="serial-data-bits">
+                        <option>8</option>
+                        <option>7</option>
+                    </select>
+                </div>
+
+                <div class="input-group mb-3">
+                    <span class="input-group-text">停止位</span>
+                    <select class="form-select" id="serial-stop-bits">
+                        <option>1</option>
+                        <option>2</option>
+                    </select>
+                </div>
+
+                <div class="input-group mb-3">
+                    <span class="input-group-text">校验位</span>
+                    <select class="form-select" id="serial-parity">
+                        <Option value="even">Even</Option>
+                        <Option value="none">None</Option>
+                        <Option value="odd">Odd</Option>
+                    </select>
+                </div>
+
+                <div class="input-group mb-3">
+                    <span class="input-group-text">缓冲区</span>
+                    <input type="number" id="serial-buffer-size" class="form-control" placeholder="缓冲区大小"
+                        list="buffer-size-list" max="1677216" value="1024">
+                    <datalist id="buffer-size-list">
+                        <option>255</option>
+                        <option>512</option>
+                        <option>1024</option>
+                        <option>2048</option>
+                        <option>4096</option>
+                        <option>8192</option>
+                    </datalist>
+                </div>
+
+                <div class="input-group mb-3">
+                    <span class="input-group-text">流控制</span>
+                    <select class="form-select" id="serial-flow-control">
+                        <Option value="none">None</Option>
+                        <Option value="hardware">HardWare</Option>
+                    </select>
+                </div>
+
+                <div class="d-flex mt-2">
+                    <!-- <button class="btn btn-secondary me-3" id="serial-select-port">选择串口</button> -->
+                    <button class="btn btn-primary flex-grow-1" id="serial-open-or-close">打开串口</button>
+                </div>
+
+                <div id="serial-status" class="mt-2">
+                    <div class="alert alert-info" role="alert">
+                        未选择串口
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="textarea-group">
+                <textarea id="send-text" placeholder="输入要发送的内容">68 AA AA AA AA AA AA 68 13 00 DF 16</textarea>
+                <button id="send-button" onclick="senddata()" disabled>发送</button>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <label for="loginfo">日志信息</label>
+                <button onclick="clearLog()">清除</button>
+            </div>
+            <textarea id="loginfo" readonly></textarea>
+        </div>
+    </div>
+
+    <dialog id="dialog">
+        <header>提示</header>
+        <form method="dialog">
+            <p id="dialog-content"></p>
+            <menu style="display: flex; justify-content: flex-end;">
+                <button onclick="succeeded = false">好</button>
+            </menu>
+        </form>
+    </dialog>
+
+    <div class="misc">
+        <button id="install-button" hidden>将串口调试工具安装到系统</button>
+        <p style="font-size: smaller; color: gray; margin: 0%">
+            <!-- <span style="font-size: smaller">蓝牙检查：edge://bluetooth-internals/#adapter</span> -->
+            <!-- <br /> -->
+            <span style="font-size: smaller">copyright (c) 2024 etmedia, licensed under MIT License</span>
+        </p>
+    </div>
+</body>
+<script>
+    if (!('serial' in navigator)) {
+		showMsg('当前浏览器不支持串口操作,请更换Edge或Chrome浏览器')
+	}
+	let serialPort = null
+
+	let reader
+	//串口目前是打开状态
+	let serialOpen = false
+	//串口目前是手动关闭状态
+	let serialClose = true
+	//串口分包合并时钟
+	let serialTimer = null
+	//串口循环发送时钟
+	let serialloopSendTimer = null
+	//串口缓存数据
+	let serialData = []
+	//文本解码
+	let textdecoder = new TextDecoder()
+
+    //串口数据收发
+	async function send() {
+		let content = document.getElementById('serial-send-content').value
+		if (!content) {
+			addLogErr('发送内容为空')
+			return
+		}
+		if (toolOptions.hexSend) {
+			await sendHex(content)
+		} else {
+			await sendText(content)
+		}
+	}
+
+
+    function clearLog() {
+        document.getElementById('loginfo').value = '';
+    }
+
+    function makePayload() {
+        const text = document.getElementById('send-text').value;
+        const cleanedText = text.replace(/\s+/g, '');
+        const uint8Array = new Uint8Array(cleanedText.length / 2);
+        for (let i = 0; i < cleanedText.length; i += 2) {
+            uint8Array[i / 2] = parseInt(cleanedText.substr(i, 2), 16);
+        }
+        return uint8Array;
+    }
+
+    function log(message) {
+        const logInfo = document.getElementById("loginfo");
+        const currentTime = new Date().toLocaleString();
+        logInfo.value = `[${currentTime}] ${message}\n` + logInfo.value;
+    }
+
+    let bluetoothDevice;
+    let Characteristic;
+    let CharacteristicRx;
+    let isStarted = false;
+
+    function updateUi(stage) {
+        const mainButton = document.getElementById("main-button");
+        const sendButton = document.getElementById("send-button");
+        const deviceName = document.getElementById("device-name");
+        const status = document.getElementById("status");
+        const recvinfo = document.getElementById("recvinfo");
+        switch (stage) {
+            case "pending":
+                mainButton.innerText = "请稍后";
+                mainButton.disabled = true;
+                sendButton.disabled = true;
+                deviceName.value = "已连接：" + bluetoothDevice.name;
+                break;
+            case "ok":
+                mainButton.innerText = "结束";
+                mainButton.disabled = false;
+                sendButton.disabled = false;
+                break;
+            case "standby":
+                mainButton.innerText = "开启";
+                mainButton.disabled = false;
+                sendButton.disabled = false;
+                deviceName.value = "未连接";
+                break;
+        }
+    }
+
+    const serialToggle = document.getElementById('serial-open-or-close')
+	const serialLogs = document.getElementById('serial-logs')
+
+    async function closeSerial() {
+		if (serialOpen) {
+			serialOpen = false
+			reader?.cancel()
+			serialToggle.innerHTML = '打开串口'
+		}
+	}
+
+    //打开串口
+	async function openSerial() {
+		let SerialOptions = {
+			baudRate: parseInt(get('serial-baud')),
+			dataBits: parseInt(get('serial-data-bits')),
+			stopBits: parseInt(get('serial-stop-bits')),
+			parity: get('serial-parity'),
+			bufferSize: parseInt(get('serial-buffer-size')),
+			flowControl: get('serial-flow-control'),
+		}
+
+		// console.log('串口配置', JSON.stringify(SerialOptions))
+        // console.log( serialPort );
+		serialPort
+			.open(SerialOptions)
+			.then(() => {
+				serialToggle.innerHTML = '关闭串口'
+				serialOpen = true
+				serialClose = false
+                const sendButton = document.getElementById("send-button");
+                sendButton.disabled = false;
+				readData()
+			})
+			.catch((e) => {
+				showMsg('打开串口失败:' + e.toString())
+                sendButton.disabled = true;
+                return
+			})
+        
+        serialStatuChange(true)
+	}
+
+	//打开或关闭串口
+	serialToggle.addEventListener('click', async () => {
+        if (!serialPort) {
+            try {
+                await navigator.serial.requestPort().then(async (port) => {
+                    closeSerial()
+                    serialPort = port
+                    console.log(serialPort.getInfo())               
+                    document.getElementById('serial-status').innerHTML = '<div class="alert alert-info" role="alert">已选择串口</div>'
+                })
+            } catch (e) {
+                console.error('获取串口权限出错 ' + e.toString())
+                return
+            }
+		}
+
+        if(!serialPort)
+        {
+            showMsg("请先选择串口")
+            return
+        }
+
+		if (serialPort.writable && serialPort.readable) {
+			closeSerial()
+			serialClose = true
+            const sendButton = document.getElementById("send-button");
+            sendButton.disabled = true;
+			return
+		}
+
+		openSerial()
+	})
+
+    //设置读取元素
+	function get(id) {
+		return document.getElementById(id).value
+	}
+	function set(id, value) {
+		return (document.getElementById(id).value = value)
+	}
+
+    //写串口数据
+	async function writeData(data) {
+		const writer = serialPort.writable.getWriter()
+		// if (toolOptions.addCRLF) {
+		await writer.write(data)
+		writer.releaseLock()
+		// addLog(data, false)
+	}
+
+	//读串口数据
+	async function readData() {
+		while (serialOpen && serialPort.readable) {
+			reader = serialPort.readable.getReader()
+			try {
+				while (true) {
+					const { value, done } = await reader.read()
+					if (done) {
+						break
+					}
+					// console.log(value, done)
+                    dataReceived(value)
+				}
+			} catch (error) {
+			} finally {
+				reader.releaseLock()
+			}
+		}
+		await serialPort.close()
+        if (serialPort)
+        {
+            serialPort = null
+        }
+        serialStatuChange(false)
+	}
+
+    //串口分包合并
+	function dataReceived(data) {
+		serialData.push(...data)
+
+		clearTimeout(serialTimer)
+		serialTimer = setTimeout(() => {
+			//超时发出
+			// console.log("serialData", serialData)
+            log("RX:"+bufferToHexString(serialData));
+			serialData = []
+		}, 50) //50ms超时？
+	}
+
+    // navigator.serial.getPorts().then((ports) => {
+	// 	if (ports.length > 0) {			
+    //         for (const port of ports) {
+    //             console.log(port.getInfo())
+    //         }
+    //         serialPort = ports[0]
+    //         console.log(serialPort.getInfo())
+	// 		// serialStatuChange(true)
+	// 	}
+	// })
+
+    // document.addEventListener('DOMContentLoaded', async () => {
+    //     console.log("DOMContentLoaded~~~")
+    //     let ports = await navigator.serial.getPorts();
+    //     for (const port of ports) {
+    //         console.log(port.getInfo())
+    //     }
+    //     // Populate the UI with options for the user to select or
+    //     // automatically connect to devices.
+    // });
+
+    //串口事件监听
+	// navigator.serial.addEventListener('connect', (e) => {
+    //     console.log("connect")
+	// 	serialStatuChange(true)
+	// 	serialPort = e.target
+	// 	//未主动关闭连接的情况下,设备重插,自动重连
+	// 	if (!serialClose) {
+	// 		openSerial()
+	// 	}
+	// })
+
+	// navigator.serial.addEventListener('disconnect', (e) => {
+    //     console.log("disconnect")
+	// 	serialStatuChange(false)
+	// 	setTimeout(closeSerial, 500)
+	// })
+
+	function serialStatuChange(statu) {
+		let tip
+		if (statu) {
+			tip = '<div class="alert alert-success" role="alert">设备已连接</div>'
+		} else {
+			tip = '<div class="alert alert-danger" role="alert">设备已断开</div>'
+		}
+		document.getElementById('serial-status').innerHTML = tip
+	}
+
+    //弹窗
+	function showMsg(msg) {
+		const dialogContent = document.getElementById("dialog-content");
+        dialogContent.innerText = msg;
+        document.getElementById("dialog").showModal();
+	}
+
+    async function handleBluetoothError(error) {
+        console.log(error)
+        // this is so fucking ugly but i have no choice
+        // you would never know how those shitty browsers behave
+        if (error.toString().match(/User cancelled/) || error.toString() == "2") return; // "2" is a weird behavior of Bluefy browser on iOS
+        const dialogContent = document.getElementById("dialog-content");
+        if (!navigator.bluetooth || error.toString().match(/Bluetooth adapter not available/)) {
+            dialogContent.innerText = "找不到蓝牙硬件，或浏览器不支持。\n\n限于篇幅，详情请参考源代码仓库内的“疑难解答”。";
+        } else if (error.toString().match(/User denied the browser permission/)) {
+            dialogContent.innerText = "蓝牙权限遭拒。\n\n请前往手机设置，授予浏览器“位置信息”权限。\n此权限不会用于定位，详情请参考源代码仓库内的“疑难解答”。";
+        } else if (error.toString().match(/NetworkError/)) {
+            dialogContent.innerText = "连接不稳定，无法与蓝牙设备建立连接。\n请重试。";
+        } else {
+            dialogContent.innerText = error + "\n\n是什么呢\n\n（这可能是一个Bug，请截图并反馈给开发者。）";
+        }
+        document.getElementById("dialog").showModal();
+        if (bluetoothDevice) await bluetoothDevice.gatt.disconnect();
+        isStarted = false;
+        updateUi("standby");
+    }
+
+    function bufferToHexString(array) {
+    // explanation: [0x12, 0x34, 0xAB, 0xCD] => "1234ABCD"
+    return Array.from(new Uint8Array(array))
+        .map((x) => x.toString(16).padStart(2, "0"))
+        .join("")
+        .toUpperCase();
+    }
+
+    async function handleRxdNotifications(event) {
+        const value = event.target.value;
+        log("RX:"+bufferToHexString(value.buffer));
+    }
+
+    async function senddata() {
+        if (!serialPort || !serialPort.writable) {
+			showMsg('请先打开串口再发送数据')
+			return
+		}
+        log("TX:"+bufferToHexString(makePayload()));
+        // await Characteristic.writeValue(makePayload(bluetoothDevice.name));
+        await writeData(makePayload())
+    }
+
+    async function start() {
+        try {
+            bluetoothDevice = await navigator.bluetooth.requestDevice({
+                // filters: [{ namePrefix: "2" }],
+                acceptAllDevices: true,//http://localhost:63342/klbc-bluetooth-water-control/manifest.json?_ijt=ji272376ot7avl396u716kucb1
+                // optionalServices: [0xFF59] // actually it's better to use 0xF1F0 instead of "generic_access" but it will trigger a bug on Bluefy
+                optionalServices: ['6e400001-b5a3-f393-e0a9-e50e24dc4179', window.navigator.userAgent.match(/Bluefy/) ? "generic_access" : 0xFFE0]
+            });
+            updateUi("pending");
+            const server = await bluetoothDevice.gatt.connect();
+            const services = await server.getPrimaryServices();
+            if(services.length == 0){
+                throw new Error('No services found');
+                return;
+            }
+            // 获取蓝牙uuid相关内容
+            const service = services[0];
+            // console.log(`service`, service.uuid);
+            // 获取可以读写字符流的服务
+            const Characteristics = await service.getCharacteristics();
+            if(Characteristics.length == 0){
+                throw new Error('No characteristics found');
+                return;
+            }
+            if(Characteristics.length == 1)
+            {
+                Characteristic = Characteristics[0];
+                CharacteristicRx = Characteristics[0];
+            }
+            else
+            {
+                Characteristic = Characteristics[0];
+                CharacteristicRx = Characteristics[1];
+            }
+            await CharacteristicRx.startNotifications();
+            CharacteristicRx.addEventListener("characteristicvaluechanged", handleRxdNotifications);
+            // // 写入字节(括号中的方法为把字符串转为字符流,传输给蓝牙)
+            // await Characteristic.writeValue(makePayload(bluetoothDevice.name));
+            isStarted = true;
+            updateUi("ok");
+        } catch (error) {
+            handleBluetoothError(error);
+        }
+    }
+
+    async function end() {
+        try {
+            // const endPayload = new Uint8Array([0xFE, 0xFE, 0x09, 0xB3, 0x00, 0x00])
+            // await txdCharacteristic.writeValue(endPayload)
+            await bluetoothDevice.gatt.disconnect();
+            isStarted = false;
+            updateUi("standby");
+        } catch (error) {
+            handleBluetoothError(error);
+        }
+    }
+
+    function handleButtonClick() {
+        isStarted ? end() : start();
+    }
+</script>
+</html>
